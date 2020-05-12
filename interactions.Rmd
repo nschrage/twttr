@@ -19,14 +19,21 @@ library(ggplot2)
 library(ggthemes)
 library(patchwork)
 
-# loading libraries for Twitter research 
+# loading libraries for Twitter research -- need authorization for this one...  
+# from what I'm reading online, it seems like rtweet is better
 library(twitteR)
 
-# can I use this without a twitter account... 
+# can I use this without a twitter account... apparently yes, well that gets rid of that problem...
+# I might have spoken too soon here. looking at the lookup_friendship... need twitter authorization... oof... 
+# consensus is better.. 
 
 library(rtweet)
 
   # access to friends, followers, tweets, etcv
+
+library(httr)
+
+# oh geez this is going to be an adventure... 
 
 
 
@@ -35,22 +42,40 @@ library(rtweet)
 
 
 # as my application is being reviewed, it is probably a good idea to start laying out what the code actually will look like so I can hit the ground running as soon as I get the green light.
+
+# maybe do a dry run with my own twitter network data... just to see if it is doable. 
+
+# concerned that the things I'm seeing online don't exactly align with what my initial project description was... do I need to keep digging, or should I be thinking about reframing my project. 
 ```
 
 # Introduction
+
+```{r setting up twitter api with rtweet, echo = FALSE}
+
+# whatever name you assigned to your created app
+appname <- "your-app-name"
+
+## api key (example below is not a real key)
+key <- "yourLongApiKeyHere"
+
+## api secret (example below is not a real key)
+secret <- "yourSecretKeyHere"
+
+# create token named "twitter_token"
+twitter_token <- create_token(
+  app = appname,
+  consumer_key = key,
+  consumer_secret = secret,
+  access_token = access_token,
+  access_secret = access_secret)
+
+```
+
 
 ```{r loading twitter data, echo = FALSE, results = "asis"}
 
 # setting up twitter authorization 
 # need account to be approved before I can do this...
-
-consumer_key <- "XXXXX"
-consumer_secret <- "XXXXX"
-access_token <- "XXXXX"
-access_secret <- "XXXXX"
-
-setup_twitter_oauth(consumer_key, consumer_secret, 
-                    access_token, access_secret)
 
 # loading twitter data
   # does norman yee not have a twitter... how to deal with that. that is actually crazy to me...
@@ -60,7 +85,23 @@ bos <- c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPr
 
 board <- lookup_users(bos)
 
+Haney_Peskin <- lookup_friendships(source = "MattHaneySF", target = "AaronPeskin", )
+
+# You will not be able to collect any data until you have acquired API credentials.
+
+
+
 ```
+
+
+```{r network viz, echo=FALSE}
+# adapted from:
+# http://vosonlab.net/papers/SocialMediaLab/SocialMediaLab_package_tutorial.pdf
+
+
+
+```
+
 
 ```{r data cleaning, echo = false}
 
