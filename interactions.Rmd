@@ -1,0 +1,76 @@
+---
+title: "Twitter Network Visualizations"
+author: "Niel Schrage"
+date: "4/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# loading libraries I always use. 
+library(tidyverse)
+library(dplyr)
+library(knitr)
+library(styler)
+
+# loading libraries for graphics/display
+library(ggplot2)
+library(ggthemes)
+library(patchwork)
+
+# loading libraries for Twitter research 
+library(twitteR)
+
+# can I use this without a twitter account... 
+
+library(rtweet)
+
+  # access to friends, followers, tweets, etcv
+
+
+
+
+
+
+
+# as my application is being reviewed, it is probably a good idea to start laying out what the code actually will look like so I can hit the ground running as soon as I get the green light.
+```
+
+# Introduction
+
+```{r loading twitter data, echo = FALSE, results = "asis"}
+
+# setting up twitter authorization 
+# need account to be approved before I can do this...
+
+consumer_key <- "XXXXX"
+consumer_secret <- "XXXXX"
+access_token <- "XXXXX"
+access_secret <- "XXXXX"
+
+setup_twitter_oauth(consumer_key, consumer_secret, 
+                    access_token, access_secret)
+
+# loading twitter data
+  # does norman yee not have a twitter... how to deal with that. that is actually crazy to me...
+  # should I be looking at pre/post quarantine tweets... time frame? 
+
+bos <- c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed")
+
+board <- lookup_users(bos)
+
+```
+
+```{r data cleaning, echo = false}
+
+```
+
+
+```{r vizualizing_interations, echo = false, results = "asis"}
+
+```
+
+```{r vizualizing_retweets, echo = false, results = "asis"}
+
+```
