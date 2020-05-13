@@ -52,22 +52,32 @@ library(httr)
 
 ```{r setting up twitter api with rtweet, echo = FALSE}
 
+# Huge assist from matthew... 
+
 # whatever name you assigned to your created app
-appname <- "your-app-name"
+appname <- "com.mschrage.cs50.pset6"
 
 ## api key (example below is not a real key)
-key <- "yourLongApiKeyHere"
+key <- "OmNp5994gPojHOzpeH6JuHCEh"
 
 ## api secret (example below is not a real key)
-secret <- "yourSecretKeyHere"
+secret <- "UtB6CPYA8WnPpRtIo3S3w03DAXYqSOXVoMnVzJ9wMjHWiN2Nq0"
 
 # create token named "twitter_token"
 twitter_token <- create_token(
   app = appname,
   consumer_key = key,
-  consumer_secret = secret,
-  access_token = access_token,
-  access_secret = access_secret)
+  consumer_secret = secret) 
+
+#,
+  #access_token = "403220845-1fwgr3vsXuYqfObhMYyQuI1DCprcO3QypgfoKW5O",
+  #access_secret = "LGftHBxuShElCTpjY4psbrMOG8zSv8HWbuaxhwTkKNfRG")
+
+```
+
+```{r test, echo = FALSE}
+
+
 
 ```
 
@@ -85,9 +95,32 @@ bos <- c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPr
 
 board <- lookup_users(bos)
 
-Haney_Peskin <- lookup_friendships(source = "MattHaneySF", target = "AaronPeskin", )
+t <- lookup_tweets(statuses = "MattHaneySF", parse = TRUE, token = twitter_token)
+
+Haney_Peskin <- lookup_friendships(source = "MattHaneySF", target = "AaronPeskin")
 
 # You will not be able to collect any data until you have acquired API credentials.
+  # how can I get around this... 
+
+Haney2 <- lookup_tweets(statuses = "MattHaneySF", parse = TRUE, token = twitter_token)
+
+
+
+
+# Need to be creative. Found package that gets 
+
+
+
+```
+
+```{r data collection/cleaning, echo=FALSE}
+
+# data collection
+SF <- get_timelines(c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed"), n = 3200)
+
+# data cleaning
+SF <- SF %>% 
+  select(screen_name, text, mentions_screen_name, is_retweet, retweet_text, hashtags, reply_to_screen_name, created_at)
 
 
 
@@ -98,6 +131,17 @@ Haney_Peskin <- lookup_friendships(source = "MattHaneySF", target = "AaronPeskin
 # adapted from:
 # http://vosonlab.net/papers/SocialMediaLab/SocialMediaLab_package_tutorial.pdf
 
+rt <- search_tweets(
+  "#rstats", n = 18000, include_rts = FALSE
+)
+
+SF <- get_timelines(c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed"), n = 3200)
+
+# need to get followers n, so I can scale graphics accordingly
+#
+
+mentions <- SF %>% 
+  filter(mentions_screen_name %in% bos)
 
 
 ```
