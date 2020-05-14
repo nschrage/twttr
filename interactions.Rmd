@@ -13,15 +13,24 @@ library(tidyverse)
 library(dplyr)
 library(knitr)
 library(styler)
+library(purrr)
+
+library(rlist)
 
 # loading libraries for graphics/display
 library(ggplot2)
 library(ggthemes)
 library(patchwork)
+library(GGally)
+library(network)
+library(sna)
+library(RColorBrewer)
 
 # loading libraries for Twitter research -- need authorization for this one...  
 # from what I'm reading online, it seems like rtweet is better
 library(twitteR)
+
+library(rjson)
 
 # can I use this without a twitter account... apparently yes, well that gets rid of that problem...
 # I might have spoken too soon here. looking at the lookup_friendship... need twitter authorization... oof... 
@@ -35,9 +44,8 @@ library(httr)
 
 # oh geez this is going to be an adventure... 
 
-
-
-
+# data collection
+SF <- get_timelines(c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed"), n = 3200)
 
 
 
@@ -81,7 +89,6 @@ twitter_token <- create_token(
 
 ```
 
-
 ```{r loading twitter data, echo = FALSE, results = "asis"}
 
 # setting up twitter authorization 
@@ -115,12 +122,291 @@ Haney2 <- lookup_tweets(statuses = "MattHaneySF", parse = TRUE, token = twitter_
 
 ```{r data collection/cleaning, echo=FALSE}
 
-# data collection
-SF <- get_timelines(c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed"), n = 3200)
+bos <- c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed")
 
 # data cleaning
 SF <- SF %>% 
   select(screen_name, text, mentions_screen_name, is_retweet, retweet_text, hashtags, reply_to_screen_name, created_at)
+
+# mentions network
+mentions <- SF %>% 
+  filter(mentions_screen_name %in% bos)
+
+
+
+bos = tibble(bos)
+
+nodes = bos
+
+# edges <- mentions %>% 
+
+# filter out mentions when sup mentions themselves... messes up the 
+
+
+
+edges <- mentions %>% 
+  # unclear if i needed this check
+  #filter(screen_name != mentions_screen_name) %>% 
+  select(screen_name, mentions_screen_name) %>% 
+  rename(Source = screen_name) %>% 
+  rename(Target = mentions_screen_name)
+
+# Flatten worked
+
+edges <- flatten(edges)
+
+net = network(edges, matrix.type = "edgelist")
+
+#x = data.frame(Twitter = network.vertex.names(net))
+#x = merge(x, nodes, by = "Twitter", sort = FALSE)$Groupe
+#net %v% "party" = as.character(x)
+
+# adding labels 
+
+ggnet2(net, label = TRUE)
+
+# initial graphic working
+
+ggnet2(net, alpha = 0.75, size = 4, edge.alpha = 0.5, label = TRUE) 
+
+# other things I could do 
+  # weights -- edge weights... 
+  # coloring by party ideology ... using thing in presentation 
+  # scale by followers.
+
+
+
+
+
+
+
+
+
+
+#mutate(mentions_screen_name = mentions_screen_name[[1]]) %>% 
+
+
+
+
+#n = network()
+
+#network.edgelist(mentions, n)
+
+
+# example of code that works
+r = "https://raw.githubusercontent.com/briatte/ggnet/master/"
+
+# read nodes
+v = read.csv(paste0(r, "inst/extdata/nodes.tsv"), sep = "\t")
+names(v)
+e = read.csv(paste0(r, "inst/extdata/network.tsv"), sep = "\t")
+#names(e)
+net = network(e, directed = TRUE)
+
+# party affiliation
+x = data.frame(Twitter = network.vertex.names(net))
+x = merge(x, v, by = "Twitter", sort = FALSE)$Groupe
+net %v% "party" = as.character(x)
+
+# color palette
+y = RColorBrewer::brewer.pal(9, "Set1")[ c(3, 1, 9, 6, 8, 5, 2) ]
+names(y) = levels(x)
+
+# network plot
+ggnet2(net, color = "party", palette = y, alpha = 0.75, size = 4, edge.alpha = 0.5)
+
+# retweet network
+
+# overall interations -- not sure what to do here... 
+
+###########################################################################################################
+
+# basic retweet look up 
+retweet <- SF %>% 
+  filter(is_retweet == TRUE) %>% 
+  filter(mentions_screen_name %in% c("MattHaneySF"))
+
+sups <- c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed")
+
+containsSupHandle <-
+  function(mentions) {
+    length(intersect(mentions, sups)) >= 1
+  }
+
+retweet <- retweet %>% 
+  mutate(new_col = map(mentions_screen_name, containsSupHandle)) %>% 
+  filter(new_col == TRUE) %>% 
+  select(screen_name, mentions_screen_name)
+
+#datalist = list()
+
+rng <- c(1:length(retweet$screen_name))
+
+datalist <- map(rng, function(i) {
+    handle <- retweet[[1]][i]
+    mentions <- retweet[2][[1]][[i]] 
+    
+    matches <- map(mentions, function(tag) {
+       if (tag %in% sups){
+        list(handle,tag) 
+       }
+    }) 
+    
+   plyr::compact(matches)
+})
+
+
+
+datalist <- as_tibble(datalist)
+
+datalist <- flatten(datalist)
+
+datalist <- unlist(datalist)
+datalist <- tibble(datalist)
+
+net = network(dl_final, matrix.type = "edgelist", directed = TRUE)
+
+#x = data.frame(Twitter = network.vertex.names(net))
+#x = merge(x, nodes, by = "Twitter", sort = FALSE)$Groupe
+#net %v% "party" = as.character(x)
+
+# adding labels 
+
+ggnet2(net, label = TRUE)
+
+# initial graphic working
+
+ggnet2(net, alpha = 0.75, size = 4, edge.alpha = 0.5, label = TRUE) 
+
+# need to turn into a tibble officially
+
+# for even rows
+
+dl_even <- dl %>% 
+  filter(row_number() %% 2 == 0) %>% 
+  rename(Source = dl)
+
+# for odd rows 
+dl_odd <- dl %>% 
+  filter(row_number() %% 2 == 1) %>% 
+  rename(Target = dl)
+
+# WOW THAT WAS HARD! 
+
+nrow(distinct(dl_final, Source, Target))
+
+# THIS FINISHES THE DATA SET FOR THE RETWEETS NETWORK
+
+dl_final <- tibble(dl_odd, dl_even) 
+
+dl_final$ID = paste(dl_final$Source, "/", dl_final$Target) 
+dl_final
+
+dl_weights <- dl_final %>% 
+  group_by(ID) %>% 
+  count(ID) %>% 
+  rename(Weights = n) %>% 
+  # why did I pick this number
+  mutate(Weights = Weights/10) %>% 
+  mutate(Source = strsplit(ID, " / ")[[1]][[1]]) %>% 
+  mutate(Target = strsplit(ID, " / ")[[1]][[2]]) %>% 
+  ungroup()
+
+dl_weights <- dl_weights %>% 
+  select(Source, Target, Weights, -ID)
+  
+
+# manually getting followers for weights
+#c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed")
+followers <- get_followers("MattHaneySF", n = 75000) %>% 
+  nrow()
+
+# <- flatten(dl_final)
+
+net = network(dl_weights, matrix.type = "edgelist", directed = TRUE)
+
+#set.edge.attribute(net, "weight", ifelse(net %e% "weights" > 0))
+
+#x = data.frame(Twitter = network.vertex.names(net))
+#x = merge(x, nodes, by = "Twitter", sort = FALSE)$Groupe
+#net %v% "party" = as.character(x)
+
+# adding labels 
+
+#ggnet2(net, label = TRUE, )
+
+# initial graphic working
+
+ggnet2(net, alpha = 0.75, size = 1, edge.alpha = 0.5, label = TRUE, edge.size = dl_weights$Weights) 
+
+
+
+###########################################################################################################
+
+
+#i <- length(retweet$screen_name)
+datalist = list()
+i <- 8
+#for (i in  length(retweet$screen_name)) {
+    # ... make some data
+
+    handle <- retweet[[1]][i]
+    mentions <- retweet[2][[1]][[i]] 
+    
+      matches <- map(mentions, function(tag) {
+       if (tag %in% sups){
+        list(handle,tag) 
+       }
+      
+    }) 
+    
+    print(matches)
+    #lapply(matches, function(x) x[!is.null(x)])
+    
+    #matches <- plyr::compact(matches)
+  
+    
+    #c(datalist, matches)
+    
+    #datalist <- datalist %>%  matches # add it to your list
+    
+    datalist <- append(datalist, matches)
+    
+   # datalist[[i]] <- c(datalist, matches)
+#}
+
+
+
+
+
+#big_data = do.call(rbind, datalist)
+  
+
+map(retweet,function(row) { length(intersect(row$mentions_screen_name, c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed"))) < 1 }) 
+
+
+
+# need to get the duplicates... from the list. 
+# what is the question we are trying to answer. for each element of a list, if that element exists within the nodes (later we will need to split it up, but not there... )
+
+
+filter(mentions_screen_name %in% c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed"))
+
+map(length(intersect(mentions_screen_name, c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed"))) < 1) 
+
+write.csv(x = SF, file = "bosexport")
+  
+  
+#retweet <- flatten(retweet) %>% 
+  
+  
+
+write()
+  
+
+
+  
+# hastags in common 
 
 
 
@@ -140,17 +426,31 @@ SF <- get_timelines(c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4Gordon
 # need to get followers n, so I can scale graphics accordingly
 #
 
-mentions <- SF %>% 
-  filter(mentions_screen_name %in% bos)
+# just mapping over target, because it is a list and we need it as a single vector 
+
+#for (i in length(edges$Target)) {
+#   new = edges$Target[[i]]  = edges[2][i]
+#}
+
+# edges[2][[1]][[1]]
+
+
+
+
+
+edges2 = map(edges, )
+
+edges3 <- unlist(edges)
+
+
+
 
 
 ```
-
 
 ```{r data cleaning, echo = false}
 
 ```
-
 
 ```{r vizualizing_interations, echo = false, results = "asis"}
 
