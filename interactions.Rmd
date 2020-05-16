@@ -25,6 +25,7 @@ library(GGally)
 library(network)
 library(sna)
 library(RColorBrewer)
+library(ggrepel)
 
 # loading libraries for Twitter research -- need authorization for this one...  
 # from what I'm reading online, it seems like rtweet is better
@@ -83,13 +84,7 @@ twitter_token <- create_token(
 
 ```
 
-```{r test, echo = FALSE}
-
-
-
-```
-
-```{r loading twitter data, echo = FALSE, results = "asis"}
+```{r NO, echo = FALSE, results = "asis"}
 
 # setting up twitter authorization 
 # need account to be approved before I can do this...
@@ -121,6 +116,8 @@ Haney2 <- lookup_tweets(statuses = "MattHaneySF", parse = TRUE, token = twitter_
 ```
 
 ```{r data collection/cleaning, echo=FALSE}
+
+
 
 bos <- c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed")
 
@@ -228,6 +225,9 @@ retweet <- SF %>%
 
 sups <- c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed")
 
+
+follower <- c(13040,)
+
 containsSupHandle <-
   function(mentions) {
     length(intersect(mentions, sups)) >= 1
@@ -318,8 +318,13 @@ dl_weights <- dl_weights %>%
 
 # manually getting followers for weights
 #c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed")
-followers <- get_followers("MattHaneySF", n = 75000) %>% 
+
+# getting follower... 
+
+followers <- map(sups, function(handle) {
+  get_followers(handle, n = 100000) %>% 
   nrow()
+}) 
 
 # <- flatten(dl_final)
 
@@ -408,54 +413,236 @@ write()
   
 # hastags in common 
 
+########################################################################################################
 
+# need go start cleaning up code for methods section
+# how to weight by followers/color
 
-```
-
-
-```{r network viz, echo=FALSE}
-# adapted from:
-# http://vosonlab.net/papers/SocialMediaLab/SocialMediaLab_package_tutorial.pdf
-
-rt <- search_tweets(
-  "#rstats", n = 18000, include_rts = FALSE
-)
-
-SF <- get_timelines(c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed"), n = 3200)
-
-# need to get followers n, so I can scale graphics accordingly
-#
-
-# just mapping over target, because it is a list and we need it as a single vector 
-
-#for (i in length(edges$Target)) {
-#   new = edges$Target[[i]]  = edges[2][i]
-#}
-
-# edges[2][[1]][[1]]
-
-
-
-
-
-edges2 = map(edges, )
-
-edges3 <- unlist(edges)
-
-
+bos <- c("MattHaneySF", "AaronPeskin", "RafaelMandelman", "D4GordonMar", "DeanPreston", "SandraLeeFewer", "HillaryRonen", "Ahsha_Safai", "SupStefani", "shamannwalton", "NormanYeeSF", "LondonBreed")
 
 
 
 ```
 
-```{r data cleaning, echo = false}
 
-```
+```{r helpful tibble, echo = false}
 
-```{r vizualizing_interations, echo = false, results = "asis"}
+
+# tibble about nodes 
+# maybe helpful for doing weights I don't know... need to get these graphics asap... plus other information that may be helpful
+
+# set up
+
+bos_handle <- c("SandraLeeFewer", "SupStefani","AaronPeskin", "D4GordonMar", "DeanPreston", "MattHaneySF", "NormanYeeSF", "RafaelMandelman", "HillaryRonen", "shamannwalton", "Ahsha_Safai", "LondonBreed")
+
+bos_district <- c("1", "2","3", "4", "5", "6", "7", "8", "9", "10", "11", "Mayor")
+
+bos_ideo <- c("7", "19","1", "3", "3", "6", "8", "9", "6", "7", "16", "15")
+
+bos_ideo <- as.numeric(bos_ideo)
+
+bos_followers <- c("5000", "4000","8000", "1000", "6000", "13000", "6500", "4000", "8000", "4000", "2500", "77000")
+
+bos_followers <- as.numeric(bos_followers)
+
+bos_followers_scaled <- c("5", "4","8", "1", "6", "13", "6.5", "4", "8", "4", "2", "20")
+
+bos_followers_scaled <- as.numeric(bos_followers_scaled)
+
+nodes_info <- tibble(bos_handle, bos_district, bos_ideo, bos_followers, bos_followers_scaled)
+
+# basic cleaning for presentation
+
+nodes_info <- nodes_info %>% 
+  rename(Twitter_Handle = bos_handle) %>% 
+  rename(District = bos_district) %>% 
+  rename(Estimated_Ideology = bos_ideo) %>% 
+  rename(Twitter_Followers = bos_followers) %>% 
+  rename(Twitter_Followers_Scaled = bos_followers_scaled) 
+
+
+nodes_info %>% kable()
+
+
 
 ```
 
 ```{r vizualizing_retweets, echo = false, results = "asis"}
 
+# basic retweet look up 
+
+# first just selecting only retweets
+retweet <- SF %>% 
+  filter(is_retweet == TRUE) 
+
+# list of all the supervisors... change the order
+sups <- c("SandraLeeFewer", "SupStefani","AaronPeskin", "D4GordonMar", "DeanPreston", "MattHaneySF", "NormanYeeSF", "RafaelMandelman", "HillaryRonen", "shamannwalton", "Ahsha_Safai", "LondonBreed")
+
+# created new function that deals with the way the column mentions_screen_name
+# is set up (a column of lists). this function iterates over the retweet dataset
+# and compares it against the list of supervisors - taking the intersect of the
+# two lists. if the result is greater than or equal to one that means there is
+# at least one supervisor mentioned.
+containsSupHandle <-
+  function(mentions) {
+    length(intersect(mentions, sups)) >= 1
+  }
+
+# running the function described above over the dataset, creating a new column
+# as an indicator of a retweet, then just selecting the screen name and
+# mentions.
+retweet <- retweet %>% 
+  mutate(new_col = map(mentions_screen_name, containsSupHandle)) %>% 
+  filter(new_col == TRUE) %>% 
+  select(screen_name, mentions_screen_name)
+
+#datalist = list()
+
+# creating a range of the entire dataset to use in the next function
+rng <- c(1:length(retweet$screen_name))
+
+# breaking up the column of lists to find the specific supervisor/supervisors
+# mentioned in a specific tweet and saving them. should spend a little more time
+# talking about this... mapping over each entry, using the [] to access specific
+# items in the list. mapping over each list and seeing if it occurs in sups
+# (because there could be multiple supervisors named)
+datalist <- map(rng, function(i) {
+    handle <- retweet[[1]][i]
+    mentions <- retweet[2][[1]][[i]] 
+    
+    matches <- map(mentions, function(tag) {
+       if (tag %in% sups){
+        list(handle,tag) 
+       }
+    }) 
+    
+   plyr::compact(matches)
+})
+
+# something worth pointing out here, this adds another column for multiple superviors 
+
+# using unlist to get datalist out of the awful/confusing form it was in. Now
+# need a work around to get it out of being a single column. Since I spent so
+# much time looking at the data, you start to notice trends, and I saw that all
+# the even columns were actually the source data, and the odd columns were
+# target. just a little data wrangling and ill be on my way. First convert to tibble.
+dl <- unlist(datalist)
+dl <- tibble(dl)
+ 
+# for even rows
+dl_even <- dl %>% 
+  filter(row_number() %% 2 == 0) %>% 
+  rename(Source = dl)
+
+# for odd rows 
+dl_odd <- dl %>% 
+  filter(row_number() %% 2 == 1) %>% 
+  rename(Target = dl)
+
+# THIS FINISHES THE DATA SET FOR THE RETWEETS NETWORK
+# join them together and you get a dataset to plot the network vizualization.
+
+dl_final <- tibble(dl_odd, dl_even) 
+
+# This could be where I called it, but I want to do more. I want to look at the
+# frequency of different interactions, so I'll need to calculate the weights. I
+# start doing that by creating a Source-Target ID column to and grouping and
+# counting by number of occurances. Unsuprisingly the top results were all
+# people mentioning themselves in a retweet -- what commonly happens when you do
+# a thread if I'm not mistaken. But I'll include in the paper the 10 or so most
+# common connections and see if it follows partisan lines.
+
+dl_final$ID = paste(dl_final$Source, "/", dl_final$Target) 
+dl_final
+
+# grouped by then counted, renamed for ease of comprehension. mutated to create
+# weights (10 is arbitrary, but seems to work in this instance). The I split up
+# the ID column that I made previously back into source and target to get ready
+# to do the network visualization.
+dl_weights <- dl_final %>% 
+  group_by(ID) %>% 
+  count(ID) %>% 
+  rename(Weights = n) %>% 
+  # picked a number that would help illustrate the frequency
+  mutate(Weights = Weights/10) %>% 
+  mutate(Source = strsplit(ID, " / ")[[1]][[1]]) %>% 
+  mutate(Target = strsplit(ID, " / ")[[1]][[2]]) %>% 
+  ungroup()
+
+# selecting what I'll need for viz. 
+dl_weights <- dl_weights %>% 
+  select(Source, Target, Weights, -ID)
+
+# arranged weights highest to lowest. got rid of intances where a source and target were the same and then selected the top ten results to display. 
+dl_weights_tibble <- dl_weights %>% 
+  arrange(desc(Weights)) %>% 
+  slice(9:18)
+  
+
+# setting up network viz
+
+net = network(dl_weights, matrix.type = "edgelist", directed = TRUE)
+
+# also trying to scale by node size
+# node placement is done via the Fruchterman-Reingold force-directed algorithm, but can be changed
+
+bos_handle <- c("SandraLeeFewer", "SupStefani","AaronPeskin", "D4GordonMar", "DeanPreston", "MattHaneySF", "NormanYeeSF", "RafaelMandelman", "HillaryRonen", "shamannwalton", "Ahsha_Safai", "LondonBreed")
+
+bos_district <- c("1", "2","3", "4", "5", "6", "7", "8", "9", "10", "11", "Mayor")
+
+bos_ideo <- c("7", "19","1", "3", "3", "6", "8", "9", "6", "7", "16", "15")
+
+bos_ideo <- as.numeric(bos_ideo)
+
+bos_followers <- c("5000", "4000","8000", "1000", "6000", "13000", "6500", "4000", "8000", "4000", "2500", "77000")
+
+# London Breed (the Mayor of SF has way more twitter followers than anyone else... messing up the graphic, can still tell the correct narrative with out displaying the exact disparity)
+
+
+# eventually move that back up to first chunk
+# looked at net data and reordered nodes_info... now going to reload it and hope it works
+
+nodes_info <- nodes_info %>% 
+  slice(3, 11, 4, 5, 9, 12, 6, 7, 8, 1 , 10, 2)
+
+
+# I'm worried that these are the wrong values, and that I'm just hard coding
+# stuff in that isn't actually there. How can I look under the hood. Wait now I
+# know there is a problem... look at Peskin -- I know he has high connections
+# with breed and as the graphic currently shows that does not exist. Realized
+# the solution, need to look at Net... does it ever change -- no based on number
+# of connections?
+
+
+
+retweet_network <- ggnet2(net, alpha = 0.75, node.label = nodes_info$Twitter_Handle, label.size = 3, label.color = "red", node.size = nodes_info$Twitter_Followers_Scaled, max_size = 20, node.color = nodes_info$Estimated_Ideology, palette = "Blues", edge.size = dl_weights$Weights, edge.alpha = 0.5, mode = "fruchtermanreingold") + guides(color = FALSE, size = FALSE)
+
+retweet_network
+
+# Another Interesting Viz 
+
+retweet_circle <- ggnet2(net, alpha = 0.75, node.label = nodes_info$Twitter_Handle, label.size = 2.25, label.color = "black", label.alpha = 0.95, node.size = nodes_info$Twitter_Followers_Scaled, max_size = 15, node.color = nodes_info$Estimated_Ideology, palette = "Blues", edge.size = dl_weights$Weights, edge.alpha = 0.5, mode = "circle", fontface = "bold") + guides(color = FALSE, size = FALSE)
+
+retweet_circle
+
+ggsave(filename = "retweet_circle.png", plot = retweet_circle, )
+
+
+# testing... this is how all of them should be presented... much more professional... 
+# testing... this is too cool not to do something with it... 
+
+
+
+  
+
+
+
+
 ```
+
+```{r vizualizing_mentions, echo = false, results = "asis"}
+
+```
+
+
+
